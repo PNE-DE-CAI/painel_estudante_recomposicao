@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>RECOMPOSIÇÃO · Painel do Estudante</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: linear-gradient(145deg, #0a2f6c 0%, #041a3a 100%); min-height: 100vh; padding: 20px; color: #212121; }
+        :root { --azul-escuro: #0a2f6c; --azul-claro: #eef3fb; --vermelho: #d32f2f; --branco: #ffffff; --preto: #212121; --cinza-borda: #e0e4e9; }
+        .container { max-width: 800px; margin: 0 auto; background: #0f1a24; border-radius: 48px; padding: 20px; box-shadow: 0 30px 35px rgba(0,0,0,0.5), inset 0 1px 4px rgba(255,255,200,0.1); border: 1px solid var(--vermelho); }
+        .header { display: flex; justify-content: space-between; align-items: center; background: #0a2f6ccc; backdrop-filter: blur(4px); padding: 12px 24px; border-radius: 60px; margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
+        .logo-area { display: flex; align-items: center; gap: 12px; }
+        .logo-area img { max-height: 50px; width: auto; background: white; border-radius: 12px; padding: 4px; }
+        .logo-area span { font-size: 1.2rem; font-weight: 600; color: #ffec9e; }
+        .card { background: var(--branco); border-radius: 32px; padding: 1.5rem; margin-bottom: 1.5rem; box-shadow: 0 8px 20px rgba(0,0,0,0.2); border: 1px solid var(--cinza-borda); }
+        .card h2 { color: var(--azul-escuro); border-left: 4px solid var(--vermelho); padding-left: 1rem; margin-bottom: 1.2rem; font-size: 1.5rem; }
+        .grid-forms { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
+        input { width: 100%; padding: 12px; border-radius: 40px; border: 1px solid var(--cinza-borda); font-family: 'Inter', sans-serif; margin: 10px 0; }
+        button { background: linear-gradient(135deg, #0a2f6c, #052050); border: none; padding: 10px 20px; border-radius: 40px; color: white; font-weight: 600; cursor: pointer; transition: 0.1s linear; margin: 5px 0; width: 100%; }
+        button:active { transform: translateY(2px); }
+        .btn-logout { background: var(--vermelho); margin-top: 0; }
+        .progress-bar { background: #e0e0e0; border-radius: 30px; height: 20px; overflow: hidden; margin: 10px 0; }
+        .progress-fill { background: var(--vermelho); width: 0%; height: 100%; border-radius: 30px; }
+        .conquista-title { font-size: 1.3rem; font-weight: 700; color: var(--azul-escuro); margin-top: 0.5rem; }
+        .conquista-frase { font-style: italic; color: #2c3e50; background: #f0f4fa; padding: 0.5rem; border-radius: 20px; margin-top: 0.5rem; }
+        .ranking-item { display: flex; justify-content: space-between; border-bottom: 1px solid var(--cinza-borda); padding: 0.5rem 0; }
+        .saldo { font-size: 2rem; font-weight: 800; color: var(--vermelho); text-align: center; }
+        footer { text-align: center; margin-top: 1rem; color: #b4c8e0; font-size: 0.8rem; }
+    </style>
+</head>
+<body>
+<div class="container" id="app">
+    <div class="header">
+        <div class="logo-area">
+            <img src="https://i.ibb.co/0p01LzxB/logo3de.jpg" alt="Logo">
+            <span>RECOMPOSIÇÃO · Estudante</span>
+        </div>
+    </div>
+
+    <!-- Tela de login -->
+    <div id="loginPanel">
+        <div class="card" style="max-width: 400px; margin: 0 auto;">
+            <h2>🎓 Acesso do Estudante</h2>
+            <input type="text" id="matriculaInput" placeholder="Digite sua matrícula">
+            <button id="loginBtn">Ver meus dados</button>
+        </div>
+    </div>
+
+    <!-- Painel do estudante (inicialmente oculto) -->
+    <div id="studentPanel" style="display: none;">
+        <div style="text-align: right; margin-bottom: 10px;">
+            <button id="logoutBtn" class="btn-logout" style="width: auto; padding: 5px 15px;">Sair</button>
+        </div>
+        <div class="card">
+            <h2><i class="fas fa-user-graduate"></i> Meu Progresso na Recomposição</h2>
+            <div id="studentData"></div>
+        </div>
+        <div class="card">
+            <h2><i class="fas fa-trophy"></i> Ranking da Minha Escola</h2>
+            <div id="rankingEscola"></div>
+        </div>
+    </div>
+    <footer>Use sua matrícula para acessar seus dados e conquistas.</footer>
+</div>
+
+<script>
+    (function() {
+        // ==================== CONFIGURAÇÃO (mesma do sistema original) ====================
+        const SUPABASE_URL = 'https://wvaxedoskhjptqoircup.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_GoIjPoGgq0874lTQujS_uw_TY82ARhe';
+        // =================================================================================
+
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        let currentStudentId = null;
+        let currentStudentData = null;
+
+        const loginPanel = document.getElementById('loginPanel');
+        const studentPanel = document.getElementById('studentPanel');
+
+        // Funções auxiliares (mesmas do sistema original)
+        function calcularPontos(volume, modulo, cena) {
+            return (volume * 1000) + (modulo * 100) + (cena * 10);
+        }
+
+        function gerarConquista(volume, modulo, cena) {
+            const prefixos = [
+                "Explorador", "Desbravador", "Navegador", "Desafiador", "Conquistador",
+                "Guardião", "Mestre", "Sábio", "Virtuoso", "Campeão", "Herói", "Lenda"
+            ];
+            const temas = [
+                "Fundamentos", "Operações", "Geometria", "Álgebra", "Medidas", "Probabilidade",
+                "Raciocínio Lógico", "Gráficos", "Equações", "Funções", "Trigonometria", "Estatística"
+            ];
+            const acoes = [
+                "concluiu a cena", "avançou no módulo", "superou o desafio", "consolidou o aprendizado",
+                "demonstrou domínio", "alcançou a maestria", "desbloqueou o conhecimento", "venceu o obstáculo"
+            ];
+            const complementos = [
+                "com excelência", "com dedicação", "com brilhantismo", "com persistência",
+                "com criatividade", "com superação"
+            ];
+            const idxPref = (cena - 1) % prefixos.length;
+            const idxTema = (modulo - 1) % temas.length;
+            const idxAcao = (volume + modulo + cena) % acoes.length;
+            const idxComp = (cena * modulo) % complementos.length;
+            
+            let titulo = `${prefixos[idxPref]} do ${temas[idxTema]} - Cena ${cena}`;
+            let frase = `No Volume ${volume}, Módulo ${modulo}, você ${acoes[idxAcao]} ${complementos[idxComp]}. Continue assim e alcance a próxima cena!`;
+            return { titulo, frase };
+        }
+
+        async function carregarRankingEscola(escola) {
+            const { data, error } = await supabase
+                .from('tutor_alunos')
+                .select('*')
+                .eq('escola', escola)
+                .order('pontos', { ascending: false });
+            if (error) {
+                console.error(error);
+                return [];
+            }
+            return data || [];
+        }
+
+        async function carregarDadosEstudante(matricula) {
+            const { data, error } = await supabase
+                .from('tutor_alunos')
+                .select('*')
+                .eq('matricula', matricula);
+            if (error || !data || data.length === 0) {
+                alert('Matrícula não encontrada. Verifique e tente novamente.');
+                return false;
+            }
+            const estudante = data[0];
+            currentStudentId = estudante.id;
+            currentStudentData = estudante;
+
+            // Exibir dados
+            const pontos = calcularPontos(estudante.volume, estudante.modulo, estudante.cena);
+            const conquista = gerarConquista(estudante.volume, estudante.modulo, estudante.cena);
+            const progressoTotal = ((estudante.volume-1)*4*12 + (estudante.modulo-1)*12 + estudante.cena) / (2*4*12) * 100;
+
+            const studentHtml = `
+                <div class="grid-forms">
+                    <div class="card" style="box-shadow: none; padding: 1rem;">
+                        <h3>🏆 Pontuação Total</h3>
+                        <div class="saldo">${pontos} pts</div>
+                    </div>
+                    <div class="card" style="box-shadow: none; padding: 1rem;">
+                        <h3>📌 Progresso na Recomposição</h3>
+                        <p><strong>Volume ${estudante.volume} / 2</strong> &nbsp;|&nbsp; <strong>Módulo ${estudante.modulo} / 4</strong> &nbsp;|&nbsp; <strong>Cena ${estudante.cena} / 12</strong></p>
+                        <div class="progress-bar"><div class="progress-fill" style="width: ${progressoTotal}%;"></div></div>
+                    </div>
+                    <div class="card" style="box-shadow: none; padding: 1rem;">
+                        <h3>🎖️ Conquista Atual</h3>
+                        <div class="conquista-title">🏅 ${conquista.titulo}</div>
+                        <div class="conquista-frase">“${conquista.frase}”</div>
+                        <p style="margin-top:0.5rem;"><strong>Status:</strong> ${estudante.status}</p>
+                    </div>
+                </div>
+                <div class="card" style="box-shadow: none; padding: 1rem; margin-top: 1rem;">
+                    <h3>📊 Detalhes</h3>
+                    <p><strong>Escola:</strong> ${estudante.escola}</p>
+                    <p><strong>Série:</strong> ${estudante.serie}</p>
+                    <p><strong>Turma:</strong> ${estudante.turma}</p>
+                    <p><strong>Nome:</strong> ${estudante.nome}</p>
+                    <p><strong>Matrícula:</strong> ${estudante.matricula}</p>
+                </div>
+            `;
+            document.getElementById('studentData').innerHTML = studentHtml;
+
+            // Ranking da escola
+            const ranking = await carregarRankingEscola(estudante.escola);
+            if (ranking.length > 0) {
+                let rankHtml = '<ol style="margin-left: 1rem;">';
+                ranking.slice(0, 10).forEach((aluno, idx) => {
+                    rankHtml += `<li><strong>${aluno.nome}</strong> - ${aluno.pontos} pts</li>`;
+                });
+                rankHtml += '</ol>';
+                document.getElementById('rankingEscola').innerHTML = rankHtml;
+            } else {
+                document.getElementById('rankingEscola').innerHTML = '<p>Nenhum outro aluno encontrado nesta escola.</p>';
+            }
+
+            return true;
+        }
+
+        // Eventos
+        document.getElementById('loginBtn').onclick = async () => {
+            const matricula = document.getElementById('matriculaInput').value.trim();
+            if (!matricula) {
+                alert('Digite sua matrícula.');
+                return;
+            }
+            const ok = await carregarDadosEstudante(matricula);
+            if (ok) {
+                loginPanel.style.display = 'none';
+                studentPanel.style.display = 'block';
+            }
+        };
+
+        document.getElementById('logoutBtn').onclick = () => {
+            currentStudentId = null;
+            currentStudentData = null;
+            loginPanel.style.display = 'block';
+            studentPanel.style.display = 'none';
+            document.getElementById('matriculaInput').value = '';
+        };
+    })();
+</script>
+</body>
+</html>
